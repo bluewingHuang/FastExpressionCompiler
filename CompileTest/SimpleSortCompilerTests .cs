@@ -194,11 +194,11 @@ namespace CompileTest
             //init(vars, exps);
 
 
-            var left_ListIndex = Expression.Parameter(typeof(int), "left_ListIndex");
-            var left_ArrayIndex = Expression.Parameter(typeof(int), "left_ArrayIndex");
-            var right_ListIndex = Expression.Parameter(typeof(int), "right_ListIndex");
-            var right_ArrayIndex = Expression.Parameter(typeof(int), "right_ArrayIndex");
-            var compareResult = Expression.Parameter(typeof(int), "compareResult");
+            var left_ListIndex =Parameter(typeof(int), "left_ListIndex");
+            var left_ArrayIndex =Parameter(typeof(int), "left_ArrayIndex");
+            var right_ListIndex =Parameter(typeof(int), "right_ListIndex");
+            var right_ArrayIndex =Parameter(typeof(int), "right_ArrayIndex");
+            var compareResult =Parameter(typeof(int), "compareResult");
             vars.AddRange(new ParameterExpression[] { left_ListIndex, left_ArrayIndex, right_ListIndex, right_ArrayIndex, compareResult });
 
             var columns = new ParameterExpression[Orders.Length];
@@ -206,67 +206,69 @@ namespace CompileTest
             var rightVars = new ParameterExpression[Orders.Length];
             for (int k = 0; k < Orders.Length; ++k)
             {
-                columns[k] = Expression.Variable(typeof(ColumnData<int?>), $"column_{k}");
-                leftVars[k] = Expression.Parameter(typeof(int?), $"left_{k}");
-                rightVars[k] = Expression.Parameter(typeof(int?), $"right_{k}");
+                columns[k] =Variable(typeof(ColumnData<int?>), $"column_{k}");
+                leftVars[k] =Parameter(typeof(int?), $"left_{k}");
+                rightVars[k] =Parameter(typeof(int?), $"right_{k}");
                 vars.Add(leftVars[k]);
                 vars.Add(rightVars[k]);
                 vars.Add(columns[k]);
-                exps.Add(Expression.Assign(columns[k], Expression.Convert(Expression.ArrayAccess(Expression.Field(sortData, "Columns"), Expression.Constant(k)), typeof(ColumnData<int?>))));
+                exps.Add(Expression.Assign(columns[k],Convert(Expression.ArrayAccess(Expression.Field(sortData, "Columns"),Constant(k)), typeof(ColumnData<int?>))));
             }
 
-            //exps.AddRange(makeCondition(leftIndex, rightIndex, Expression.Return(endMain, Expression.Constant(1)), Expression.Return(endMain, Expression.Constant(-1))));
+            //exps.AddRange(makeCondition(leftIndex, rightIndex,Return(endMain,Constant(1)),Return(endMain,Constant(-1))));
 
-            Expression breakExp = Expression.Return(endMain, Expression.Constant(1));
-            Expression continueExp = Expression.Return(endMain, Expression.Constant(-1));
-            exps.Add(Expression.Assign(left_ListIndex, Expression.Divide(leftIndex, Expression.Constant(Capacity))));
-            exps.Add(Expression.Assign(left_ArrayIndex, Expression.Modulo(leftIndex, Expression.Constant(Capacity))));
+            Expression breakExp =Return(endMain,Constant(1));
+            Expression continueExp =Return(endMain,Constant(-1));
+            exps.Add(Expression.Assign(left_ListIndex,Divide(leftIndex,Constant(Capacity))));
+            exps.Add(Expression.Assign(left_ArrayIndex,Modulo(leftIndex,Constant(Capacity))));
 
-            exps.Add(Expression.Assign(right_ListIndex, Expression.Divide(rightIndex, Expression.Constant(Capacity))));
-            exps.Add(Expression.Assign(right_ArrayIndex, Expression.Modulo(rightIndex, Expression.Constant(Capacity))));
+            exps.Add(Expression.Assign(right_ListIndex,Divide(rightIndex,Constant(Capacity))));
+            exps.Add(Expression.Assign(right_ArrayIndex,Modulo(rightIndex,Constant(Capacity))));
 
 
             for (int k = 0; k < Orders.Length; ++k)
             {
-                var dataArrayList = Expression.PropertyOrField(Expression.PropertyOrField(columns[k], "Datas"), "DataArrayList");
+                var dataArrayList =PropertyOrField(Expression.PropertyOrField(columns[k], "Datas"), "DataArrayList");
 
-                exps.Add(Expression.Assign(leftVars[k], Expression.ArrayAccess(Expression.Property(dataArrayList, "Item", left_ListIndex), left_ArrayIndex)));
-                exps.Add(Expression.Assign(rightVars[k], Expression.ArrayAccess(Expression.Property(dataArrayList, "Item", right_ListIndex), right_ArrayIndex)));
+                exps.Add(Expression.Assign(leftVars[k],ArrayAccess(Expression.Property(dataArrayList, "Item", left_ListIndex), left_ArrayIndex)));
+                exps.Add(Expression.Assign(rightVars[k],ArrayAccess(Expression.Property(dataArrayList, "Item", right_ListIndex), right_ArrayIndex)));
 
-                var leftNil = Expression.IfThen(Expression.NotEqual(rightVars[k], Expression.Constant(null)), Expression.IfThenElse(Expression.Equal(Expression.ArrayAccess(Expression.Field(sortData, "NilValues"), Expression.Constant(k), Expression.Constant(0)), Expression.Constant(-1)), continueExp, breakExp));
-                var rightNil = Expression.IfThen(Expression.NotEqual(leftVars[k], Expression.Constant(null)), Expression.IfThenElse(Expression.Equal(Expression.ArrayAccess(Expression.Field(sortData, "NilValues"), Expression.Constant(k), Expression.Constant(1)), Expression.Constant(-1)), continueExp, breakExp));
+                var leftNil =IfThen(Expression.NotEqual(rightVars[k],Constant(null)),IfThenElse(Expression.Equal(Expression.ArrayAccess(Expression.Field(sortData, "NilValues"),Constant(k),Constant(0)),Constant(-1)), continueExp, breakExp));
+                var rightNil =IfThen(Expression.NotEqual(leftVars[k],Constant(null)),IfThenElse(Expression.Equal(Expression.ArrayAccess(Expression.Field(sortData, "NilValues"),Constant(k),Constant(1)),Constant(-1)), continueExp, breakExp));
 
-                var isAsc = Expression.ArrayAccess(Expression.Field(sortData, "isAsc"), Expression.Constant(k));
+                var isAsc =ArrayAccess(Expression.Field(sortData, "isAsc"),Constant(k));
                 List<Expression> allNotNil = new List<Expression>();
                 MethodInfo compareMethod = typeof(OracleStringComparer).GetMethod("Compare", new Type[] { typeof(string), typeof(string) });
-                Expression stringCompare = Expression.Call(Expression.Field(sortData, "StringComparer"), compareMethod, leftVars[k], rightVars[k]);
+                //Expression stringCompare =Call(Expression.Field(sortData, "StringComparer"), compareMethod, leftVars[k], rightVars[k]);
 
-                if (FieldDataTypes[k] == EnumFieldDataType.STRING)
-                    allNotNil.Add(Expression.Assign(compareResult, stringCompare));
-                    //if (Orders[k].Order == EnumOrderMode.ASCCH || Orders[k].Order == EnumOrderMode.DESCCH)
-                    //    allNotNil.Add(Expression.Assign(compareResult, chineseStringCompare(leftVars[k], rightVars[k])));
-                    //else
-                    //    allNotNil.Add(Expression.Assign(compareResult, stringCompare(leftVars[k], rightVars[k])));
-                else
-                {
-                    var method = typeof(int?).GetMethod("CompareTo", new[] { typeof(int?) });
-                    allNotNil.Add(Expression.Assign(compareResult, Expression.Call(Expression.PropertyOrField(leftVars[k], "Value"), method, Expression.PropertyOrField(rightVars[k], "Value"))));
-                }
+                //if (FieldDataTypes[k] == EnumFieldDataType.STRING)
+                //    //allNotNil.Add(Expression.Assign(compareResult, stringCompare));
+                //    //if (Orders[k].Order == EnumOrderMode.ASCCH || Orders[k].Order == EnumOrderMode.DESCCH)
+                //    //    allNotNil.Add(Expression.Assign(compareResult, chineseStringCompare(leftVars[k], rightVars[k])));
+                //    //else
+                //    //    allNotNil.Add(Expression.Assign(compareResult, stringCompare(leftVars[k], rightVars[k])));
+                //else
+                //{
+                //    var method = typeof(int?).GetMethod("CompareTo", new[] { typeof(int?) });
+                //    allNotNil.Add(Expression.Assign(compareResult,Call(Expression.PropertyOrField(leftVars[k], "Value"), method,PropertyOrField(rightVars[k], "Value"))));
+                //}
+                var method = typeof(int).GetMethod("CompareTo", new[] { typeof(int) });
+                allNotNil.Add(Expression.Assign(compareResult,Call(Expression.PropertyOrField(leftVars[k], "Value"), method,PropertyOrField(rightVars[k], "Value"))));
 
-                allNotNil.Add(Expression.IfThen(Expression.Not(isAsc), Expression.Assign(compareResult, Expression.Negate(compareResult))));
-                allNotNil.Add(Expression.IfThen(Expression.Equal(compareResult, Expression.Constant(-1)), continueExp));
+                allNotNil.Add(Expression.IfThen(Expression.Not(isAsc),Assign(compareResult,Negate(compareResult))));
+                allNotNil.Add(Expression.IfThen(Expression.Equal(compareResult,Constant(-1)), continueExp));
 
                 if (k < Orders.Length - 1)
-                    allNotNil.Add(Expression.IfThen(Expression.Equal(compareResult, Expression.Constant(1)), breakExp));
+                    allNotNil.Add(Expression.IfThen(Expression.Equal(compareResult,Constant(1)), breakExp));
 
 
-                var exp = Expression.IfThenElse(Expression.Equal(leftVars[k], Expression.Constant(null)), leftNil, Expression.IfThenElse(Expression.Equal(rightVars[k], Expression.Constant(null)), rightNil, Expression.Block(allNotNil.ToArray())));
+                var exp =IfThenElse(Expression.Equal(leftVars[k],Constant(null)), leftNil,IfThenElse(Expression.Equal(rightVars[k],Constant(null)), rightNil,Block(allNotNil.ToArray())));
                 exps.Add(exp);
             }
             exps.Add(breakExp);
 
-            exps.Add(Expression.Label(endMain, Expression.Constant(-1)));
-            BlockExpression block = Expression.Block(
+            exps.Add(Expression.Label(endMain,Constant(-1)));
+            BlockExpression block =Block(
                 vars.ToArray(), exps
             );
             var expr = Lambda<Func<SortData, int, int, int>>(block, sortData, leftIndex, rightIndex);
@@ -293,16 +295,23 @@ namespace CompileTest
 
 
             var fs = expr.CompileSys();
+            Console.WriteLine("-----------------test1---------------------");
             fs.PrintIL();
-            var result1 = fs(data1, 0, 1);
+            var resultSys = fs(data1, 0, 1);
+            Console.WriteLine($"resultSys:{resultSys}");
+            Assert.AreEqual(-1, resultSys);
 
             var ff = expr.CompileFast(ifFastFailedReturnNull: true);
             //t.IsNotNull(ff);
+            Assert.IsNotNull(ff);
+            Console.WriteLine("-----------------test2---------------------");
             ff.PrintIL();
-            var result2 = ff(data2, 0, 1);
+            var resultFast = ff(data2, 0, 1);
+            Console.WriteLine($"resultFast:{resultFast}");
+            Assert.AreEqual(-1, resultFast);
 
             //t.AreEqual(data1, data2);
-            Assert.AreEqual(result1, result2);
+            Assert.AreEqual(resultSys, resultFast);
 
 
             //if (UseFastExpressionCompiler)
@@ -312,7 +321,7 @@ namespace CompileTest
             //}
             //else
             //{
-            //    var re = Expression.Lambda<Func<SortData, int, int, int>>(block, sortData, leftIndex, rightIndex).CompileSys();
+            //    var re =Lambda<Func<SortData, int, int, int>>(block, sortData, leftIndex, rightIndex).CompileSys();
             //    return re;
             //}
 
@@ -330,5 +339,523 @@ namespace CompileTest
             //Assert.AreEqual(-1, comparer(sortData, 0, 1));
             //Assert.AreEqual(1, comparer(sortData, 1, 0));
         }
+
+
+        [TestMethod]
+        public void CompileComparisonFunction3_ShouldReturnExpectedSign_ForDescendingInt()
+        {
+            int Capacity = 8;
+            var Orders = new[] { new OrderInfo { Field = "f1", Order = EnumOrderMode.DESC, NilMode = EnumNilMode.LAST } };
+            var FieldDataTypes = new[] { EnumFieldDataType.INT };
+
+            var sortData = Parameter(typeof(SortData), "sortData");
+            var leftIndex = Parameter(typeof(int), "leftIndex");
+            var rightIndex = Parameter(typeof(int), "rightIndex");
+            LabelTarget endMain = Label(typeof(int), "endMain");
+
+            List<Expression> exps = new List<Expression>();
+            List<ParameterExpression> vars = new List<ParameterExpression>();
+            //init(vars, exps);
+
+
+            var left_ListIndex =Parameter(typeof(int), "left_ListIndex");
+            var left_ArrayIndex =Parameter(typeof(int), "left_ArrayIndex");
+            var right_ListIndex =Parameter(typeof(int), "right_ListIndex");
+            var right_ArrayIndex =Parameter(typeof(int), "right_ArrayIndex");
+            var compareResult =Parameter(typeof(int), "compareResult");
+            vars.AddRange(new ParameterExpression[] { left_ListIndex, left_ArrayIndex, right_ListIndex, right_ArrayIndex, compareResult });
+
+            var columns = new ParameterExpression[Orders.Length];
+            var leftVars = new ParameterExpression[Orders.Length];
+            var rightVars = new ParameterExpression[Orders.Length];
+            for (int k = 0; k < Orders.Length; ++k)
+            {
+                columns[k] =Variable(typeof(ColumnData<int?>), $"column_{k}");
+                leftVars[k] =Parameter(typeof(int?), $"left_{k}");
+                rightVars[k] =Parameter(typeof(int?), $"right_{k}");
+                vars.Add(leftVars[k]);
+                vars.Add(rightVars[k]);
+                vars.Add(columns[k]);
+                exps.Add(Expression.Assign(columns[k],Convert(Expression.ArrayAccess(Expression.Field(sortData, "Columns"),Constant(k)), typeof(ColumnData<int?>))));
+            }
+
+            //exps.AddRange(makeCondition(leftIndex, rightIndex,Return(endMain,Constant(1)),Return(endMain,Constant(-1))));
+
+            Expression breakExp =Return(endMain,Constant(1));
+            Expression continueExp =Return(endMain,Constant(-1));
+            exps.Add(Expression.Assign(left_ListIndex,Divide(leftIndex,Constant(Capacity))));
+            exps.Add(Expression.Assign(left_ArrayIndex,Modulo(leftIndex,Constant(Capacity))));
+
+            exps.Add(Expression.Assign(right_ListIndex,Divide(rightIndex,Constant(Capacity))));
+            exps.Add(Expression.Assign(right_ArrayIndex,Modulo(rightIndex,Constant(Capacity))));
+
+
+            for (int k = 0; k < Orders.Length; ++k)
+            {
+                var dataArrayList =PropertyOrField(Expression.PropertyOrField(columns[k], "Datas"), "DataArrayList");
+
+                exps.Add(Expression.Assign(leftVars[k],ArrayAccess(Expression.Property(dataArrayList, "Item", left_ListIndex), left_ArrayIndex)));
+                exps.Add(Expression.Assign(rightVars[k],ArrayAccess(Expression.Property(dataArrayList, "Item", right_ListIndex), right_ArrayIndex)));
+
+                var leftNil =IfThen(Expression.NotEqual(rightVars[k],Constant(null)),IfThenElse(Expression.Equal(Expression.ArrayAccess(Expression.Field(sortData, "NilValues"),Constant(k),Constant(0)),Constant(-1)), continueExp, breakExp));
+                var rightNil =IfThen(Expression.NotEqual(leftVars[k],Constant(null)),IfThenElse(Expression.Equal(Expression.ArrayAccess(Expression.Field(sortData, "NilValues"),Constant(k),Constant(1)),Constant(-1)), continueExp, breakExp));
+
+                var isAsc =ArrayAccess(Expression.Field(sortData, "isAsc"),Constant(k));
+                List<Expression> allNotNil = new List<Expression>();
+                MethodInfo compareMethod = typeof(OracleStringComparer).GetMethod("Compare", new Type[] { typeof(string), typeof(string) });
+                //Expression stringCompare =Call(Expression.Field(sortData, "StringComparer"), compareMethod, leftVars[k], rightVars[k]);
+
+                //if (FieldDataTypes[k] == EnumFieldDataType.STRING)
+                //    //allNotNil.Add(Expression.Assign(compareResult, stringCompare));
+                //    //if (Orders[k].Order == EnumOrderMode.ASCCH || Orders[k].Order == EnumOrderMode.DESCCH)
+                //    //    allNotNil.Add(Expression.Assign(compareResult, chineseStringCompare(leftVars[k], rightVars[k])));
+                //    //else
+                //    //    allNotNil.Add(Expression.Assign(compareResult, stringCompare(leftVars[k], rightVars[k])));
+                //else
+                //{
+                //    var method = typeof(int?).GetMethod("CompareTo", new[] { typeof(int?) });
+                //    allNotNil.Add(Expression.Assign(compareResult,Call(Expression.PropertyOrField(leftVars[k], "Value"), method,PropertyOrField(rightVars[k], "Value"))));
+                //}
+                var method = typeof(int).GetMethod("CompareTo", new[] { typeof(int) });
+                allNotNil.Add(Expression.Assign(compareResult,Call(Expression.PropertyOrField(leftVars[k], "Value"), method,PropertyOrField(rightVars[k], "Value"))));
+
+                allNotNil.Add(Expression.IfThen(Expression.Not(isAsc),Assign(compareResult,Negate(compareResult))));
+                allNotNil.Add(Expression.IfThen(Expression.Equal(compareResult,Constant(-1)), continueExp));
+
+                if (k < Orders.Length - 1)
+                    allNotNil.Add(Expression.IfThen(Expression.Equal(compareResult,Constant(1)), breakExp));
+
+
+                var exp =IfThenElse(Expression.Equal(leftVars[k],Constant(null)), leftNil,IfThenElse(Expression.Equal(rightVars[k],Constant(null)), rightNil,Block(allNotNil.ToArray())));
+                exps.Add(exp);
+            }
+            exps.Add(breakExp);
+
+            exps.Add(Expression.Label(endMain,Constant(-1)));
+            BlockExpression block =Block(
+                vars.ToArray(), exps
+            );
+            var expr = Lambda<Func<SortData, int, int, int>>(block, sortData, leftIndex, rightIndex);
+            expr.PrintCSharp();
+
+            var data1 = new SortData
+            {
+                Columns = new ColumnDataBase[] { CreateIntColumn("age", 1, 1) },
+                RowNumbers = new[] { 0, 1 },
+                NilValues = new[,] { { 1, -1 } },
+                isAsc = new[] { false },
+                StringComparer = new OracleStringComparer(),
+                //ChineseStringComparer = new ChineseStringComparer()
+            };
+            var data2 = new SortData
+            {
+                Columns = new ColumnDataBase[] { CreateIntColumn("age", 1, 1) },
+                RowNumbers = new[] { 0, 1 },
+                NilValues = new[,] { { 1, -1 } },
+                isAsc = new[] { false },
+                StringComparer = new OracleStringComparer(),
+                //ChineseStringComparer = new ChineseStringComparer()
+            };
+
+
+            var fs = expr.CompileSys();
+            Console.WriteLine("-----------------test1---------------------");
+            fs.PrintIL();
+            var resultSys = fs(data1, 0, 1);
+            Console.WriteLine($"resultSys:{resultSys}");
+            Assert.AreEqual(1, resultSys);
+
+            var ff = expr.CompileFast(ifFastFailedReturnNull: true);
+            //t.IsNotNull(ff);
+            Assert.IsNotNull(ff);
+            Console.WriteLine("-----------------test2---------------------");
+            ff.PrintIL();
+            var resultFast = ff(data2, 0, 1);
+            Console.WriteLine($"resultFast:{resultFast}");
+            Assert.AreEqual(1, resultFast);
+
+            //t.AreEqual(data1, data2);
+            Assert.AreEqual(resultSys, resultFast);
+
+
+            //if (UseFastExpressionCompiler)
+            //{
+            //    var re = Lambda<Func<SortData, int, int, int>>(block, sortData, leftIndex, rightIndex).CompileFast();
+            //    return re;
+            //}
+            //else
+            //{
+            //    var re =Lambda<Func<SortData, int, int, int>>(block, sortData, leftIndex, rightIndex).CompileSys();
+            //    return re;
+            //}
+
+            //var comparer = compiler.CompileComparisonFunction(UseFastExpressionCompiler);
+            //var sortData = new SortData
+            //{
+            //    Columns = new ColumnDataBase[] { CreateIntColumn("age", 3, 1) },
+            //    RowNumbers = new[] { 0, 1 },
+            //    NilValues = new[,] { { 1, -1 } },
+            //    isAsc = new[] { false },
+            //    StringComparer = new OracleStringComparer(),
+            //    //ChineseStringComparer = new ChineseStringComparer()
+            //};
+
+            //Assert.AreEqual(-1, comparer(sortData, 0, 1));
+            //Assert.AreEqual(1, comparer(sortData, 1, 0));
+        }
+
+
+        [TestMethod]
+        public void CompileComparisonFunction4_ShouldReturnExpectedSign_ForDescendingInt()
+        {
+            int Capacity = 8;
+            var Orders = new[] { new OrderInfo { Field = "f1", Order = EnumOrderMode.DESC, NilMode = EnumNilMode.LAST } };
+            var FieldDataTypes = new[] { EnumFieldDataType.INT };
+
+            var sortData = Parameter(typeof(SortData), "sortData");
+            var leftIndex = Parameter(typeof(int), "leftIndex");
+            var rightIndex = Parameter(typeof(int), "rightIndex");
+            LabelTarget endMain = Label(typeof(int), "endMain");
+
+            List<Expression> exps = new List<Expression>();
+            List<ParameterExpression> vars = new List<ParameterExpression>();
+            //init(vars, exps);
+
+
+            var left_ListIndex =Parameter(typeof(int), "left_ListIndex");
+            var left_ArrayIndex =Parameter(typeof(int), "left_ArrayIndex");
+            var right_ListIndex =Parameter(typeof(int), "right_ListIndex");
+            var right_ArrayIndex =Parameter(typeof(int), "right_ArrayIndex");
+            var compareResult =Parameter(typeof(int), "compareResult");
+            vars.AddRange(new ParameterExpression[] { left_ListIndex, left_ArrayIndex, right_ListIndex, right_ArrayIndex, compareResult });
+
+            var columns = new ParameterExpression[Orders.Length];
+            var leftVars = new ParameterExpression[Orders.Length];
+            var rightVars = new ParameterExpression[Orders.Length];
+            for (int k = 0; k < Orders.Length; ++k)
+            {
+                columns[k] =Variable(typeof(ColumnData<int?>), $"column_{k}");
+                leftVars[k] =Parameter(typeof(int?), $"left_{k}");
+                rightVars[k] =Parameter(typeof(int?), $"right_{k}");
+                vars.Add(leftVars[k]);
+                vars.Add(rightVars[k]);
+                vars.Add(columns[k]);
+                exps.Add(Expression.Assign(columns[k],Convert(Expression.ArrayAccess(Expression.Field(sortData, "Columns"),Constant(k)), typeof(ColumnData<int?>))));
+            }
+
+            //exps.AddRange(makeCondition(leftIndex, rightIndex,Return(endMain,Constant(1)),Return(endMain,Constant(-1))));
+
+            Expression breakExp =Return(endMain,Constant(1));
+            Expression continueExp =Return(endMain,Constant(-1));
+            exps.Add(Expression.Assign(left_ListIndex,Divide(leftIndex,Constant(Capacity))));
+            exps.Add(Expression.Assign(left_ArrayIndex,Modulo(leftIndex,Constant(Capacity))));
+
+            exps.Add(Expression.Assign(right_ListIndex,Divide(rightIndex,Constant(Capacity))));
+            exps.Add(Expression.Assign(right_ArrayIndex,Modulo(rightIndex,Constant(Capacity))));
+
+
+            for (int k = 0; k < Orders.Length; ++k)
+            {
+                var dataArrayList =PropertyOrField(Expression.PropertyOrField(columns[k], "Datas"), "DataArrayList");
+
+                exps.Add(Expression.Assign(leftVars[k],ArrayAccess(Expression.Property(dataArrayList, "Item", left_ListIndex), left_ArrayIndex)));
+                //exps.Add(Expression.Assign(rightVars[k],ArrayAccess(Expression.Property(dataArrayList, "Item", right_ListIndex), right_ArrayIndex)));
+
+                //var leftNil =IfThen(Expression.NotEqual(rightVars[k],Constant(null)),IfThenElse(Expression.Equal(Expression.ArrayAccess(Expression.Field(sortData, "NilValues"),Constant(k),Constant(0)),Constant(-1)), continueExp, breakExp));
+                //var rightNil =IfThen(Expression.NotEqual(leftVars[k],Constant(null)),IfThenElse(Expression.Equal(Expression.ArrayAccess(Expression.Field(sortData, "NilValues"),Constant(k),Constant(1)),Constant(-1)), continueExp, breakExp));
+
+                //var isAsc =ArrayAccess(Expression.Field(sortData, "isAsc"),Constant(k));
+                //List<Expression> allNotNil = new List<Expression>();
+                //var method = typeof(int).GetMethod("CompareTo", new[] { typeof(int) });
+                //allNotNil.Add(Expression.Assign(compareResult,Call(Expression.PropertyOrField(leftVars[k], "Value"), method,PropertyOrField(rightVars[k], "Value"))));
+
+                //allNotNil.Add(Expression.IfThen(Expression.Not(isAsc),Assign(compareResult,Negate(compareResult))));
+                //allNotNil.Add(Expression.IfThen(Expression.Equal(compareResult,Constant(-1)), continueExp));
+
+                //if (k < Orders.Length - 1)
+                //    allNotNil.Add(Expression.IfThen(Expression.Equal(compareResult,Constant(1)), breakExp));
+
+
+                //var exp =IfThenElse(Expression.Equal(leftVars[k],Constant(null)), leftNil,IfThenElse(Expression.Equal(rightVars[k],Constant(null)), rightNil,Block(allNotNil.ToArray())));
+                //exps.Add(exp);
+            }
+            //exps.Add(breakExp);
+
+            exps.Add(Expression.Label(endMain,Constant(-1)));
+            BlockExpression block =Block(
+                vars.ToArray(), exps
+            );
+            var expr = Lambda<Func<SortData, int, int, int>>(block, sortData, leftIndex, rightIndex);
+            expr.PrintCSharp();
+
+            var data1 = new SortData
+            {
+                Columns = new ColumnDataBase[] { CreateIntColumn("age", 1, 1) },
+                RowNumbers = new[] { 0, 1 },
+                NilValues = new[,] { { 1, -1 } },
+                isAsc = new[] { false },
+                StringComparer = new OracleStringComparer(),
+                //ChineseStringComparer = new ChineseStringComparer()
+            };
+            var data2 = new SortData
+            {
+                Columns = new ColumnDataBase[] { CreateIntColumn("age", 1, 1) },
+                RowNumbers = new[] { 0, 1 },
+                NilValues = new[,] { { 1, -1 } },
+                isAsc = new[] { false },
+                StringComparer = new OracleStringComparer(),
+                //ChineseStringComparer = new ChineseStringComparer()
+            };
+
+
+            var fs = expr.CompileSys();
+            Console.WriteLine("-----------------test1---------------------");
+            fs.PrintIL();
+            var resultSys = fs(data1, 0, 1);
+            Console.WriteLine($"resultSys:{resultSys}");
+            //Assert.AreEqual(1, resultSys);
+
+            var ff = expr.CompileFast(ifFastFailedReturnNull: true);
+            //t.IsNotNull(ff);
+            Assert.IsNotNull(ff);
+            Console.WriteLine("-----------------test2---------------------");
+            ff.PrintIL();
+            var resultFast = ff(data2, 0, 1);
+            Console.WriteLine($"resultFast:{resultFast}");
+            //Assert.AreEqual(1, resultFast);
+
+            //t.AreEqual(data1, data2);
+            //Assert.AreEqual(resultSys, resultFast);
+
+
+            //if (UseFastExpressionCompiler)
+            //{
+            //    var re = Lambda<Func<SortData, int, int, int>>(block, sortData, leftIndex, rightIndex).CompileFast();
+            //    return re;
+            //}
+            //else
+            //{
+            //    var re =Lambda<Func<SortData, int, int, int>>(block, sortData, leftIndex, rightIndex).CompileSys();
+            //    return re;
+            //}
+
+            //var comparer = compiler.CompileComparisonFunction(UseFastExpressionCompiler);
+            //var sortData = new SortData
+            //{
+            //    Columns = new ColumnDataBase[] { CreateIntColumn("age", 3, 1) },
+            //    RowNumbers = new[] { 0, 1 },
+            //    NilValues = new[,] { { 1, -1 } },
+            //    isAsc = new[] { false },
+            //    StringComparer = new OracleStringComparer(),
+            //    //ChineseStringComparer = new ChineseStringComparer()
+            //};
+
+            //Assert.AreEqual(-1, comparer(sortData, 0, 1));
+            //Assert.AreEqual(1, comparer(sortData, 1, 0));
+        }
+
+
+        [TestMethod]
+        public void CompileComparisonFunction5_ShouldReturnExpectedSign_ForDescendingInt()
+        {
+            int Capacity = 8;
+            var Orders = new[] { new OrderInfo { Field = "f1", Order = EnumOrderMode.DESC, NilMode = EnumNilMode.LAST } };
+            var FieldDataTypes = new[] { EnumFieldDataType.INT };
+
+            var sortData = Parameter(typeof(SortData), "sortData");
+            var leftIndex = Parameter(typeof(int), "leftIndex");
+            var rightIndex = Parameter(typeof(int), "rightIndex");
+            LabelTarget endMain = Label(typeof(int), "endMain");
+
+            List<Expression> exps = new List<Expression>();
+            List<ParameterExpression> vars = new List<ParameterExpression>();
+            //init(vars, exps);
+
+
+            var left_ListIndex =Parameter(typeof(int), "left_ListIndex");
+            var left_ArrayIndex =Parameter(typeof(int), "left_ArrayIndex");
+            var right_ListIndex =Parameter(typeof(int), "right_ListIndex");
+            var right_ArrayIndex =Parameter(typeof(int), "right_ArrayIndex");
+            var compareResult =Parameter(typeof(int), "compareResult");
+            vars.AddRange(new ParameterExpression[] { left_ListIndex, left_ArrayIndex, right_ListIndex, right_ArrayIndex, compareResult });
+
+            var columns = new ParameterExpression[Orders.Length];
+            var leftVars = new ParameterExpression[Orders.Length];
+            var rightVars = new ParameterExpression[Orders.Length];
+            for (int k = 0; k < Orders.Length; ++k)
+            {
+                columns[k] =Variable(typeof(ColumnData<int?>), $"column_{k}");
+                leftVars[k] =Parameter(typeof(int?), $"left_{k}");
+                rightVars[k] =Parameter(typeof(int?), $"right_{k}");
+                vars.Add(leftVars[k]);
+                vars.Add(rightVars[k]);
+                vars.Add(columns[k]);
+                exps.Add(Expression.Assign(columns[k],Convert(Expression.ArrayAccess(Expression.Field(sortData, "Columns"),Constant(k)), typeof(ColumnData<int?>))));
+            }
+
+            //exps.AddRange(makeCondition(leftIndex, rightIndex,Return(endMain,Constant(1)),Return(endMain,Constant(-1))));
+
+            Expression breakExp =Return(endMain,Constant(1));
+            Expression continueExp =Return(endMain,Constant(-1));
+            exps.Add(Expression.Assign(left_ListIndex,Divide(leftIndex,Constant(Capacity))));
+            exps.Add(Expression.Assign(left_ArrayIndex,Modulo(leftIndex,Constant(Capacity))));
+
+            exps.Add(Expression.Assign(right_ListIndex,Divide(rightIndex,Constant(Capacity))));
+            exps.Add(Expression.Assign(right_ArrayIndex,Modulo(rightIndex,Constant(Capacity))));
+
+
+            for (int k = 0; k < Orders.Length; ++k)
+            {
+                var dataArrayList =PropertyOrField(Expression.PropertyOrField(columns[k], "Datas"), "DataArrayList");
+
+                exps.Add(Expression.Assign(leftVars[k],ArrayAccess(Expression.Property(dataArrayList, "Item", left_ListIndex), left_ArrayIndex)));
+                //exps.Add(Expression.Assign(rightVars[k],ArrayAccess(Expression.Property(dataArrayList, "Item", right_ListIndex), right_ArrayIndex)));
+
+                //var leftNil =IfThen(Expression.NotEqual(rightVars[k],Constant(null)),IfThenElse(Expression.Equal(Expression.ArrayAccess(Expression.Field(sortData, "NilValues"),Constant(k),Constant(0)),Constant(-1)), continueExp, breakExp));
+                //var rightNil =IfThen(Expression.NotEqual(leftVars[k],Constant(null)),IfThenElse(Expression.Equal(Expression.ArrayAccess(Expression.Field(sortData, "NilValues"),Constant(k),Constant(1)),Constant(-1)), continueExp, breakExp));
+
+                //var isAsc =ArrayAccess(Expression.Field(sortData, "isAsc"),Constant(k));
+                //List<Expression> allNotNil = new List<Expression>();
+                //var method = typeof(int).GetMethod("CompareTo", new[] { typeof(int) });
+                //allNotNil.Add(Expression.Assign(compareResult,Call(Expression.PropertyOrField(leftVars[k], "Value"), method,PropertyOrField(rightVars[k], "Value"))));
+
+                //allNotNil.Add(Expression.IfThen(Expression.Not(isAsc),Assign(compareResult,Negate(compareResult))));
+                //allNotNil.Add(Expression.IfThen(Expression.Equal(compareResult,Constant(-1)), continueExp));
+
+                //if (k < Orders.Length - 1)
+                //    allNotNil.Add(Expression.IfThen(Expression.Equal(compareResult,Constant(1)), breakExp));
+
+
+                //var exp =IfThenElse(Expression.Equal(leftVars[k],Constant(null)), leftNil,IfThenElse(Expression.Equal(rightVars[k],Constant(null)), rightNil,Block(allNotNil.ToArray())));
+                //exps.Add(exp);
+            }
+            //exps.Add(breakExp);
+
+            exps.Add(Expression.Label(endMain,Constant(-1)));
+            BlockExpression block =Block(
+                vars.ToArray(), exps
+            );
+            var expr = Lambda<Func<SortData, int, int, int>>(block, sortData, leftIndex, rightIndex);
+            expr.PrintCSharp();
+
+            var data1 = new SortData
+            {
+                Columns = new ColumnDataBase[] { CreateIntColumn("age", 1, 1) },
+                RowNumbers = new[] { 0, 1 },
+                NilValues = new[,] { { 1, -1 } },
+                isAsc = new[] { false },
+                StringComparer = new OracleStringComparer(),
+                //ChineseStringComparer = new ChineseStringComparer()
+            };
+            var data2 = new SortData
+            {
+                Columns = new ColumnDataBase[] { CreateIntColumn("age", 1, 1) },
+                RowNumbers = new[] { 0, 1 },
+                NilValues = new[,] { { 1, -1 } },
+                isAsc = new[] { false },
+                StringComparer = new OracleStringComparer(),
+                //ChineseStringComparer = new ChineseStringComparer()
+            };
+
+
+            var fs = expr.CompileSys();
+            Console.WriteLine("-----------------test1---------------------");
+            fs.PrintIL();
+            var resultSys = fs(data1, 0, 1);
+            Console.WriteLine($"resultSys:{resultSys}");
+            //Assert.AreEqual(1, resultSys);
+
+            var ff = expr.CompileFast(ifFastFailedReturnNull: true);
+            //t.IsNotNull(ff);
+            Assert.IsNotNull(ff);
+            Console.WriteLine("-----------------test2---------------------");
+            ff.PrintIL();
+            var resultFast = ff(data2, 0, 1);
+            Console.WriteLine($"resultFast:{resultFast}");
+            //Assert.AreEqual(1, resultFast);
+
+            //t.AreEqual(data1, data2);
+            //Assert.AreEqual(resultSys, resultFast);
+
+
+            //if (UseFastExpressionCompiler)
+            //{
+            //    var re = Lambda<Func<SortData, int, int, int>>(block, sortData, leftIndex, rightIndex).CompileFast();
+            //    return re;
+            //}
+            //else
+            //{
+            //    var re =Lambda<Func<SortData, int, int, int>>(block, sortData, leftIndex, rightIndex).CompileSys();
+            //    return re;
+            //}
+
+            //var comparer = compiler.CompileComparisonFunction(UseFastExpressionCompiler);
+            //var sortData = new SortData
+            //{
+            //    Columns = new ColumnDataBase[] { CreateIntColumn("age", 3, 1) },
+            //    RowNumbers = new[] { 0, 1 },
+            //    NilValues = new[,] { { 1, -1 } },
+            //    isAsc = new[] { false },
+            //    StringComparer = new OracleStringComparer(),
+            //    //ChineseStringComparer = new ChineseStringComparer()
+            //};
+
+            //Assert.AreEqual(-1, comparer(sortData, 0, 1));
+            //Assert.AreEqual(1, comparer(sortData, 1, 0));
+        }
+
+        [TestMethod]
+        public void CompileComparisonFunction6_ShouldReturnExpectedSign_ForDescendingInt()
+        {
+            List<Expression> exps = new List<Expression>();
+            var myValueList = Parameter(typeof(MyValueList<int?>), "myValueList");
+            List<ParameterExpression> vars = new List<ParameterExpression>();
+            var left_ListIndex = Parameter(typeof(int), "left_ListIndex");
+            var left_ArrayIndex = Parameter(typeof(int), "left_ArrayIndex");
+
+            vars.AddRange(new ParameterExpression[] { left_ListIndex, left_ArrayIndex });
+            var leftVars = new ParameterExpression[1];
+            leftVars[0] =Parameter(typeof(int?), $"left_{0}");
+            vars.Add(leftVars[0]);
+            var dataArrayList = PropertyOrField(myValueList, "DataArrayList");
+            exps.Add(Assign(left_ListIndex, Constant(0)));
+            exps.Add(Assign(left_ArrayIndex, Constant(0)));
+            exps.Add(Assign(leftVars[0], ArrayAccess(Expression.Property(dataArrayList, "Item", left_ListIndex), left_ArrayIndex)));
+
+            BlockExpression block =Block(
+                vars.ToArray(), exps
+            );
+            var expr = Lambda<Action<MyValueList<int?>>>(block, myValueList);
+            expr.PrintCSharp();
+
+            MyValueList<int?> data1 = new CompileTest.MyValueList<int?>() {
+                DataArrayList = new List<int?[]> { new int?[] { 1 } }
+            };
+            MyValueList<int?> data2 = new CompileTest.MyValueList<int?>()
+            {
+                DataArrayList = new List<int?[]> { new int?[] { 1 } }
+            };
+
+
+            var fs = expr.CompileSys();
+            fs.PrintIL();
+            fs(data1);
+
+            var ff = expr.CompileFast(ifFastFailedReturnNull: true);
+            //t.IsNotNull(ff);
+            Assert.IsNotNull(ff);
+            ff.PrintIL();
+            ff(data2);
+        }
+    }
+
+    /// <typeparam name="T"></typeparam>
+    [Serializable]
+    public class MyValueList<T>
+    {
+        /// <summary>
+        /// 
+        /// </summary>
+        public List<T[]> DataArrayList;
     }
 }
