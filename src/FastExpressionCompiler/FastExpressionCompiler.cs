@@ -2597,6 +2597,9 @@ namespace FastExpressionCompiler
                 for (var i = 0; i < indexArgCount; i++)
                     if (!TryEmit(indexArgs.GetArgument(i), paramExprs, il, ref closure, setup, argParent, -1))
                         return false;
+                //for (var i = 0; i < indexArgCount; i++)
+                //    if (!TryEmit(indexArgs.GetArgument(i), paramExprs, il, ref closure, setup, p, -1))
+                //        return false;
 
                 var indexerProp = indexExpr.Indexer;
                 return indexerProp != null
