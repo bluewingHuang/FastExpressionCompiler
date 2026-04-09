@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 #if LIGHT_EXPRESSION
 using FastExpressionCompiler.LightExpression.ImTools;
@@ -16,8 +17,7 @@ public struct Issue499_InvalidProgramException_for_Sorting_and_comparison_functi
     {
         Quicksort_partition_with_nested_loops(t);
         Comparison_function_with_goto_labels(t);
-
-        Quicksort_partition(t);
+        ArrayInList_ArrayAcceesError(t);
     }
 
     // Reproduces the sorting use-case from https://github.com/dadhi/FastExpressionCompiler/issues/499
@@ -155,84 +155,43 @@ public struct Issue499_InvalidProgramException_for_Sorting_and_comparison_functi
         t.AreEqual(1, ff(1, 3));
     }
 
-
-    public void Quicksort_partition(TestContext t)
+    /// <summary>
+    /// ff raise System.InvalidProgramException: Common Language Runtime detected an invalid program.
+    /// </summary>
+    /// <param name="t"></param>
+    public void ArrayInList_ArrayAcceesError(TestContext t)
     {
-        var arr = Parameter(typeof(int[]), "arr");
-        var low = Parameter(typeof(int), "low");
-        var high = Parameter(typeof(int), "high");
+        List<Expression> exps = new List<Expression>();
+        var dataArrayList = Parameter(typeof(List<int?[]>), "dataArrayList");
+        List<ParameterExpression> vars = new List<ParameterExpression>();
+        var left_ListIndex = Parameter(typeof(int), "left_ListIndex");
+        var left_ArrayIndex = Parameter(typeof(int), "left_ArrayIndex");
 
-        var i = Variable(typeof(int), "i");
-        var j = Variable(typeof(int), "j");
-        var pivot = Variable(typeof(int), "pivot");
-        var temp = Variable(typeof(int), "temp");
-        var compareResult = Variable(typeof(int), "compareResult");
+        vars.AddRange(new ParameterExpression[] { left_ListIndex, left_ArrayIndex });
+        var leftVars = new ParameterExpression[1];
+        leftVars[0] = Parameter(typeof(int?), $"left_{0}");
+        vars.Add(leftVars[0]);
+        exps.Add(Assign(left_ListIndex, Constant(0)));
+        exps.Add(Assign(left_ArrayIndex, Constant(0)));
+        exps.Add(Assign(leftVars[0], ArrayAccess(Expression.Property(dataArrayList, "Item", left_ListIndex), left_ArrayIndex)));
 
-        var endMain = Label(typeof(void), "endMain");
-        var endSub1 = Label(typeof(void), "endSub1");
-        var endSub2 = Label(typeof(void), "endSub2");
-        var continue1 = Label(typeof(void), "continue1");
-        var continue2 = Label(typeof(void), "continue2");
-
-        var compareToMethod = typeof(int).GetMethod("CompareTo", new[] { typeof(int) });
-
-        // Inner loop 1: while arr[i] < pivot { i++ }
-        // Matches the makeCondition(rowNumbers[i], pivot, Break(endSub1), Block(i++, Continue(continue1))) pattern.
-        var innerLoop1 = Loop(
-            Block(
-                Assign(compareResult, Call(ArrayAccess(arr, i), compareToMethod, pivot)),
-                IfThen(Equal(compareResult, Constant(-1)),
-                    Block(PostIncrementAssign(i), Continue(continue1))),
-                Break(endSub1)
-            ),
-            endSub1, continue1);
-
-        // Inner loop 2: while arr[j] > pivot { j-- }
-        // Matches the makeCondition(pivot, rowNumbers[j], Break(endSub2), Block(j--, Continue(continue2))) pattern.
-        var innerLoop2 = Loop(
-            Block(
-                Assign(compareResult, Call(pivot, compareToMethod, ArrayAccess(arr, j))),
-                IfThen(Equal(compareResult, Constant(-1)),
-                    Block(PostDecrementAssign(j), Continue(continue2))),
-                Break(endSub2)
-            ),
-            endSub2, continue2);
-
-        var body = Block(
-            new[] { i, j, pivot, temp, compareResult },
-            Assign(i, low),
-            Assign(j, high),
-            Assign(pivot, ArrayAccess(arr, Divide(Add(i, j), Constant(2)))),
-            Loop(
-                Block(
-                    IfThen(GreaterThan(i, j), Break(endMain)),
-                    innerLoop1,
-                    innerLoop2,
-                    IfThen(LessThanOrEqual(i, j),
-                        Block(
-                            Assign(temp, ArrayAccess(arr, i)),
-                            Assign(ArrayAccess(arr, i), ArrayAccess(arr, j)),
-                            Assign(ArrayAccess(arr, j), temp),
-                            PostIncrementAssign(i),
-                            PostDecrementAssign(j)))
-                ),
-                endMain));
-
-        var expr = Lambda<Action<int[], int, int>>(body, arr, low, high);
+        BlockExpression block = Block(
+            vars.ToArray(), exps
+        );
+        var expr = Lambda<Action<List<int?[]>>>(block, dataArrayList);
         expr.PrintCSharp();
 
-        int[] data1 = new[] { 3, 1, 4, 1, 5 };
-        int[] data2 = new[] { 3, 1, 4, 1, 5 };
+        List<int?[]> data1 = new List<int?[]> { new int?[] { 1 } };
+        List<int?[]> data2 = new List<int?[]> { new int?[] { 1 } };
+
 
         var fs = expr.CompileSys();
         fs.PrintIL();
-        fs(data1, 0, data1.Length - 1);
+        fs(data1);
 
         var ff = expr.CompileFast(ifFastFailedReturnNull: true);
         t.IsNotNull(ff);
         ff.PrintIL();
-        ff(data2, 0, data2.Length - 1);
-
-        t.AreEqual(data1, data2);
+        ff(data2);
     }
 }
