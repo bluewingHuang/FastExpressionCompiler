@@ -847,6 +847,77 @@ namespace CompileTest
             ff.PrintIL();
             ff(data2);
         }
+
+        [TestMethod]
+        public void CompileComparisonFunction7_ShouldReturnExpectedSign_ForDescendingInt()
+        {
+            List<Expression> exps = new List<Expression>();
+            var dataArrayList = Parameter(typeof(List<int?[]>), "dataArrayList");
+            List<ParameterExpression> vars = new List<ParameterExpression>();
+            var left_ListIndex = Parameter(typeof(int), "left_ListIndex");
+            var left_ArrayIndex = Parameter(typeof(int), "left_ArrayIndex");
+
+            vars.AddRange(new ParameterExpression[] { left_ListIndex, left_ArrayIndex });
+            var leftVars = new ParameterExpression[1];
+            leftVars[0] = Parameter(typeof(int?), $"left_{0}");
+            vars.Add(leftVars[0]);
+            exps.Add(Assign(left_ListIndex, Constant(0)));
+            exps.Add(Assign(left_ArrayIndex, Constant(0)));
+            exps.Add(Assign(leftVars[0], ArrayAccess(Expression.Property(dataArrayList, "Item", left_ListIndex), left_ArrayIndex)));
+
+            BlockExpression block = Block(
+                vars.ToArray(), exps
+            );
+            var expr = Lambda<Action<List<int?[]>>>(block, dataArrayList);
+            expr.PrintCSharp();
+
+            List<int?[]> data1 = new List<int?[]> { new int?[] { 1 } };
+            List<int?[]> data2 = new List<int?[]> { new int?[] { 1 } };
+
+
+            var fs = expr.CompileSys();
+            fs.PrintIL();
+            fs(data1);
+
+            var ff = expr.CompileFast(ifFastFailedReturnNull: true);
+            //t.IsNotNull(ff);
+            Assert.IsNotNull(ff);
+            ff.PrintIL();
+            ff(data2);
+        }
+
+
+        [TestMethod]
+        public void CompileComparisonFunction8_ShouldReturnExpectedSign_ForDescendingInt()
+        {
+            List<Expression> exps = new List<Expression>();
+            var dataArrayList = Parameter(typeof(List<int?[]>), "dataArrayList");
+            List<ParameterExpression> vars = new List<ParameterExpression>();
+            var leftVars = new ParameterExpression[1];
+            leftVars[0] = Parameter(typeof(int?), $"left_{0}");
+            vars.Add(leftVars[0]);
+            exps.Add(Assign(leftVars[0], ArrayAccess(Expression.Property(dataArrayList, "Item", Constant(0)), Constant(0))));
+
+            BlockExpression block = Block(
+                vars.ToArray(), exps
+            );
+            var expr = Lambda<Action<List<int?[]>>>(block, dataArrayList);
+            expr.PrintCSharp();
+
+            List<int?[]> data1 = new List<int?[]> { new int?[] { 1 } };
+            List<int?[]> data2 = new List<int?[]> { new int?[] { 1 } };
+
+
+            var fs = expr.CompileSys();
+            fs.PrintIL();
+            fs(data1);
+
+            var ff = expr.CompileFast(ifFastFailedReturnNull: true);
+            //t.IsNotNull(ff);
+            Assert.IsNotNull(ff);
+            ff.PrintIL();
+            ff(data2);
+        }
     }
 
     /// <typeparam name="T"></typeparam>
@@ -858,4 +929,5 @@ namespace CompileTest
         /// </summary>
         public List<T[]> DataArrayList;
     }
+
 }
